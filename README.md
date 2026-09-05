@@ -1,8 +1,9 @@
+<h1>Daily Dose of CID </h1>
 <div align="center">
   <a href="https://CodeMasterAbhishek.github.io/Daily-Dose-of-CID/" target="_blank" rel="noopener noreferrer">
     <img src="assets/CID-Banner.png" alt="Daily Dose of CID Banner" width="800" style="border-radius: 12px;" />
   </a>
-  <h1>Daily Dose of CID 🕵️‍♂️</h1>
+  <h1>Daily Dose of CID </h1>
   <p>A fast, serverless web application that aggregates all episodes of Crime Information Department (CID), powered entirely by GitHub Pages and Actions.</p>
 
   <a href="https://github.com/CodeMasterAbhishek/Daily-Dose-of-CID/actions/workflows/daily_sync.yml" target="_blank" rel="noopener noreferrer">
