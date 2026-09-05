@@ -1,4 +1,7 @@
 <div align="center">
+  <a href="https://CodeMasterAbhishek.github.io/Daily-Dose-of-CID/" target="_blank" rel="noopener noreferrer">
+    <img src="assets/CID-Banner.png" alt="Daily Dose of CID Banner" width="800" style="border-radius: 12px;" />
+  </a>
   <h1>Daily Dose of CID 🕵️‍♂️</h1>
   <p>A fast, serverless web application that aggregates all episodes of Crime Information Department (CID), powered entirely by GitHub Pages and Actions.</p>
 
@@ -19,11 +22,19 @@
 
 ## What is this?
 
-**Daily Dose of CID** is a serverless web application built to organize and stream all episodes of India's longest-running crime detective series *CID*. 
+**Daily Dose of CID** is a serverless web application built to organize and stream all 1,651 episodes of India's longest-running crime detective series *CID*. 
 
 With thousands of episodes spanning over two decades, official YouTube playlists often become fragmented, incomplete, or difficult to navigate for specific crime cases and arcs. Relying on traditional backend servers and databases to track this massive catalog would incur constant hosting costs. 
 
 This project solves these issues by acting as a highly optimized, specialized streaming frontend. It utilizes a **100% free, serverless architecture** where GitHub serves as both the automation backend (via Actions) and the database/CDN (via Pages and static files). A custom Python scraper natively fetches new episodes daily, updates a flat-file database, and triggers live deployments instantly.
+
+---
+
+## Catalog Availability
+
+- **Season 1 (1998 – 2018):** 1,524 / 1,547 Episodes Found on YouTube (98.5%)
+- **Season 2 (2024 – 2025):** 102 / 104 Episodes Found on YouTube (98.1%)
+- **Grand Total:** 1,626 / 1,651 Episodes Available for Instant Streaming
 
 ---
 
