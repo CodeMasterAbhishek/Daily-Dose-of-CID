@@ -1,5 +1,5 @@
-<h1>Daily Dose of CID </h1>
 <div align="center">
+  <h1>Daily Dose of CID </h1>
   <a href="https://CodeMasterAbhishek.github.io/Daily-Dose-of-CID/" target="_blank" rel="noopener noreferrer">
     <img src="assets/CID-Banner.png" alt="Daily Dose of CID Banner" width="800" style="border-radius: 12px;" />
   </a>
