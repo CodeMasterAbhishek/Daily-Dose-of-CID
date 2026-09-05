@@ -180,6 +180,9 @@ def reverse_global_scan(rows):
 
             if match:
                 ep_num = int(match.group(1))
+                combined = (title + " " + description).lower()
+                if ('season 2' in combined or 's2' in combined or 'season2' in combined) and ep_num < 2000:
+                    ep_num += 2000
                 if ep_num in ep_map:
                     row_idx, row = ep_map[ep_num]
                     vid_id = vid.get('videoId', '')
