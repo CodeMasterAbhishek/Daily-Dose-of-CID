@@ -106,24 +106,25 @@ function processBgCheckerQueue() {
 }
 
 function handleCheckerResult(article, isUnavailable) {
-    if (isUnavailable) {
-        saveVideoVerification(article.videoId, true);
-    } else {
-        verifiedVideos.add(article.videoId);
-        saveVideoVerification(article.videoId, false);
-    }
+    try {
+        verifiedVideos.add(article.id);
+        saveVideoVerification(article.videoId, isUnavailable);
+        
+        const card = document.querySelector(`.card[data-id="${article.id}"]`);
+        if (card) {
+            if (isUnavailable) card.classList.add('ep-unavailable');
+            else card.classList.remove('ep-unavailable');
+        }
+    } catch(e) {}
     
     bgCheckerQueue.shift();
     bgCheckerProcessing = false;
-    
-    if (bgCheckerQueue.length > 0) {
-        setTimeout(processBgCheckerQueue, 100);
-    }
+    setTimeout(processBgCheckerQueue, 250);
 }
 
 function saveVideoVerification(videoId, isUnavailable) {
     try {
-        const cache = JSON.parse(localStorage.getItem('cid_geo_verification_cache') || '{}');
+        const cache = getCheckerCache();
         cache[videoId] = { isUnavailable: isUnavailable, timestamp: Date.now() };
         localStorage.setItem('cid_geo_verification_cache', JSON.stringify(cache));
     } catch(e) {}
@@ -131,7 +132,15 @@ function saveVideoVerification(videoId, isUnavailable) {
 
 function getCheckerCache() {
     try {
-        return JSON.parse(localStorage.getItem('cid_geo_verification_cache') || '{}');
+        const cache = JSON.parse(localStorage.getItem('cid_geo_verification_cache') || '{}');
+        const now = Date.now();
+        for (const key in cache) {
+            if (now - cache[key].timestamp > 3600000) { // 1 hour TTL
+                delete cache[key];
+            }
+        }
+        localStorage.setItem('cid_geo_verification_cache', JSON.stringify(cache));
+        return cache;
     } catch(e) {
         return {};
     }
@@ -144,9 +153,11 @@ export async function initializeIpCache() {
         const currentIp = data.ip;
         
         const lastIp = localStorage.getItem("cid_last_ip");
-        if (lastIp !== currentIp) {
-            localStorage.setItem("cid_last_ip", currentIp);
+        if (lastIp && lastIp !== currentIp) {
+            // IP changed (e.g. VPN toggled) -> Invalidate cached video block status
+            localStorage.removeItem("cid_geo_verification_cache");
         }
+        localStorage.setItem("cid_last_ip", currentIp);
     } catch(e) {
         console.warn("Could not check IP:", e);
     }
@@ -203,13 +214,23 @@ function initIntersectionObserver() {
                 const card = entry.target;
                 const articleId = card.getAttribute('data-id');
                 const article = allArticlesMap[articleId];
-                if (article && article.videoId && !verifiedVideos.has(article.videoId)) {
-                    const cache = getCheckerCache();
-                    if (!cache[article.videoId]) {
-                        bgCheckerQueue.push(article);
-                        processBgCheckerQueue();
+                if (article && article.videoId) {
+                    if (!verifiedVideos.has(article.id)) {
+                        const cache = getCheckerCache();
+                        if (cache[article.videoId]) {
+                            verifiedVideos.add(article.id);
+                            if (cache[article.videoId].isUnavailable) {
+                                card.classList.add('ep-unavailable');
+                            }
+                        } else {
+                            if (!bgCheckerQueue.some(a => a.id === article.id)) {
+                                bgCheckerQueue.push(article);
+                                processBgCheckerQueue();
+                            }
+                        }
                     }
                 }
+                checkObserver.unobserve(card);
             }
         });
     }, { rootMargin: '200px' });
