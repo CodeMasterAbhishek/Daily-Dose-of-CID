@@ -17,9 +17,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="css/variables.css?v=1.0.3">
-    <link rel="stylesheet" href="css/layout.css?v=1.0.3">
-    <link rel="stylesheet" href="css/style.css?v=1.0.3">
+    <link rel="stylesheet" href="css/variables.css?v=1.0.4">
+    <link rel="stylesheet" href="css/layout.css?v=1.0.4">
+    <link rel="stylesheet" href="css/style.css?v=1.0.4">
 </head>
 <body>
 
@@ -34,6 +34,7 @@
             <!-- Middle Group: Search Bar, All Episodes, Storylines, Sort Dropdown -->
             <div class="header-middle-wrap" style="display: flex; align-items: center; gap: 8px;">
                 <section class="filters" aria-label="Category filters" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <!-- Always Visible Search Bar -->
                     <form id="search-form" class="static-search-form">
                         <div class="search-input-wrapper">
                             <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -80,17 +81,24 @@
     </header>
 
     <main id="episodes-view" class="container" style="margin-top: 1.5rem;">
-        <section id="news-container" class="news-grid" aria-live="polite"></section>
+
+        <!-- Dynamic Content Area (Grid) -->
+        <section id="news-container" class="news-grid" aria-live="polite">
+        </section>
         
+        <!-- Inject perfect grid of skeletons instantly before main JS loads -->
         <script>
             function renderSkeletons() {
                 var container = document.getElementById('news-container');
                 if (!container || (container.innerHTML.trim() !== '' && !container.innerHTML.includes('skeleton-text'))) return;
+                
                 var width = window.innerWidth || document.documentElement.clientWidth || 1024;
                 var height = window.innerHeight || document.documentElement.clientHeight || 768;
+                
                 var columns = width > 768 ? Math.max(1, Math.floor((width * 0.95) / 340)) : 1;
                 var rows = Math.max(2, Math.ceil(height / 400));
                 var total = columns * rows;
+                
                 var skeletonHTML = '<article class="card"><div class="card-img-wrap skeleton"></div><div class="card-content"><div class="skeleton skeleton-text short"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text"></div></div></article>';
                 container.innerHTML = skeletonHTML.repeat(total);
             }
@@ -99,12 +107,13 @@
             document.addEventListener('DOMContentLoaded', renderSkeletons);
         </script>
 
+        <!-- Infinite Scroll Sentinel -->
         <section id="pagination" style="text-align: center; margin-top: 3rem; margin-bottom: 1rem; display: none;">
             <div style="opacity: 0.6; font-size: 0.9rem;">Loading more episodes...</div>
         </section>
     </main>
 
-    <!-- Full-Page Agent Dashboard View -->
+    <!-- Full-Page Fan Dashboard View -->
     <section id="fan-dashboard-view" class="container" style="display: none; margin-top: 2rem; padding-bottom: 4rem;">
         <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px;">
             
@@ -135,6 +144,7 @@
                     </div>
                     <div id="stat-episodes-count" style="font-size: 36px; font-weight: 900; color: var(--text-primary); line-height: 1;">0</div>
                     <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); opacity: 0.8; margin-top: 10px;">Cases Solved</div>
+                    <div style="font-size: 11px; opacity: 0.5; margin-top: 4px; color: var(--text-primary);">≥ 90% Completed</div>
                 </div>
                 
                 <div style="background: var(--bg-secondary); padding: 24px; border-radius: 16px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden;">
@@ -143,6 +153,7 @@
                     </div>
                     <div id="stat-watch-hours" style="font-size: 36px; font-weight: 900; color: var(--text-primary); line-height: 1;">0h 0m</div>
                     <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); opacity: 0.8; margin-top: 10px;">Investigation Time</div>
+                    <div style="font-size: 11px; opacity: 0.5; margin-top: 4px; color: var(--text-primary);">Active Playback Only</div>
                 </div>
 
                 <div style="background: var(--bg-secondary); padding: 24px; border-radius: 16px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden;">
@@ -204,12 +215,12 @@
     </section>
 
     <footer>
-        <div class="container" style="text-align: center; padding: 2rem 0; font-size: 13px; opacity: 0.7;">
+        <div class="container">
             <p>&copy; <span id="year"></span> Daily Dose of CID.</p>
         </div>
     </footer>
 
     <!-- Scripts -->
-    <script type="module" src="js/app.js?v=3"></script>
+    <script type="module" src="js/app.js?v=1.0.4"></script>
 </body>
 </html>

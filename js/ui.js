@@ -7,7 +7,7 @@ let masterEpNumberMap = {};
 let currentModalEpNum = null;
 
 // LocalStorage Keys
-const STORAGE_COMPLETED = 'cid_completed_watched_eps';
+const STORAGE_COMPLETED = 'cid_completed_watched_eps'; // Only >= 90% completed
 const STORAGE_TIMESTAMPS = 'cid_timestamps';
 const STORAGE_EXACT_WATCH_SECONDS = 'cid_exact_watch_seconds';
 const STORAGE_HANDLE = 'cid_user_handle';
@@ -97,18 +97,17 @@ function processBgCheckerQueue() {
             }
         });
         
-        bgCheckerTimeout = setTimeout(() => {
-            cleanupAndNext(true);
-        }, 4000);
-
-    } catch (e) {
+        if (bgCheckerTimeout) clearTimeout(bgCheckerTimeout);
+        bgCheckerTimeout = setTimeout(() => cleanupAndNext(false), 6000);
+        
+    } catch(e) {
         cleanupAndNext(false);
     }
 }
 
 function handleCheckerResult(article, isUnavailable) {
     if (isUnavailable) {
-        markArticleGeoBlocked(article);
+        saveVideoVerification(article.videoId, true);
     } else {
         verifiedVideos.add(article.videoId);
         saveVideoVerification(article.videoId, false);
@@ -122,83 +121,43 @@ function handleCheckerResult(article, isUnavailable) {
     }
 }
 
-function markArticleGeoBlocked(article) {
-    saveVideoVerification(article.videoId, true);
-    
-    const cards = document.querySelectorAll(`[data-article-id="${article.id}"]`);
-    cards.forEach(card => {
-        let badge = card.querySelector('.geo-blocked-badge');
-        if (!badge) {
-            const imgWrap = card.querySelector('.card-img-wrap');
-            if (imgWrap) {
-                badge = document.createElement('span');
-                badge.className = 'geo-blocked-badge';
-                badge.style.position = 'absolute';
-                badge.style.top = '8px';
-                badge.style.left = '8px';
-                badge.style.background = 'rgba(220, 38, 38, 0.9)';
-                badge.style.color = 'white';
-                badge.style.fontSize = '10px';
-                badge.style.fontWeight = '800';
-                badge.style.padding = '4px 8px';
-                badge.style.borderRadius = '4px';
-                badge.style.zIndex = '5';
-                badge.style.backdropFilter = 'blur(4px)';
-                badge.textContent = '🔒 Geo-Restricted (VPN Req)';
-                imgWrap.appendChild(badge);
-            }
-        }
-    });
+function saveVideoVerification(videoId, isUnavailable) {
+    try {
+        const cache = JSON.parse(localStorage.getItem('cid_geo_verification_cache') || '{}');
+        cache[videoId] = { isUnavailable: isUnavailable, timestamp: Date.now() };
+        localStorage.setItem('cid_geo_verification_cache', JSON.stringify(cache));
+    } catch(e) {}
 }
 
-export function initializeIpCache() {
-    return fetch('https://api.ipify.org?format=json')
-        .then(r => r.json())
-        .then(data => {
-            const currentIp = data.ip;
-            const lastIp = localStorage.getItem("cid_last_ip");
-            if (lastIp && lastIp !== currentIp) {
-                localStorage.removeItem("cid_checker_cache");
-            }
+function getCheckerCache() {
+    try {
+        return JSON.parse(localStorage.getItem('cid_geo_verification_cache') || '{}');
+    } catch(e) {
+        return {};
+    }
+}
+
+export async function initializeIpCache() {
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        const currentIp = data.ip;
+        
+        const lastIp = localStorage.getItem("cid_last_ip");
+        if (lastIp !== currentIp) {
             localStorage.setItem("cid_last_ip", currentIp);
-        })
-        .catch(() => {});
-}
-
-function saveVideoVerification(videoId, isBlocked) {
-    try {
-        const cache = JSON.parse(localStorage.getItem("cid_checker_cache") || "{}");
-        cache[videoId] = { blocked: isBlocked, time: Date.now() };
-        localStorage.setItem("cid_checker_cache", JSON.stringify(cache));
-    } catch(e) {}
-}
-
-function isVideoCachedBlocked(videoId) {
-    try {
-        const cache = JSON.parse(localStorage.getItem("cid_checker_cache") || "{}");
-        const entry = cache[videoId];
-        if (entry && (Date.now() - entry.time < 7 * 86400000)) {
-            return entry.blocked;
         }
-    } catch(e) {}
-    return null;
-}
-
-function isVideoCachedWorking(videoId) {
-    try {
-        const cache = JSON.parse(localStorage.getItem("cid_checker_cache") || "{}");
-        const entry = cache[videoId];
-        if (entry && (Date.now() - entry.time < 7 * 86400000)) {
-            return !entry.blocked;
-        }
-    } catch(e) {}
-    return false;
+    } catch(e) {
+        console.warn("Could not check IP:", e);
+    }
 }
 
 export function registerMasterArticles(articles) {
     articles.forEach(article => {
         allArticlesMap[article.id] = article;
-        masterEpNumberMap[article.epNumber] = article;
+        if (article.epNumber) {
+            masterEpNumberMap[article.epNumber] = article;
+        }
     });
 }
 
@@ -210,12 +169,21 @@ export function getCompletedWatchedList() {
     }
 }
 
-function saveCompletedWatchedList(list) {
-    localStorage.setItem(STORAGE_COMPLETED, JSON.stringify(list));
-    updateFanDashboard();
+function saveCompletedEpisode(articleId) {
+    const list = getCompletedWatchedList();
+    if (!list.includes(articleId)) {
+        list.push(articleId);
+        localStorage.setItem(STORAGE_COMPLETED, JSON.stringify(list));
+        
+        const card = document.querySelector(`.card[data-id="${articleId}"]`);
+        if (card) {
+            card.classList.add('read-article', 'watched-article');
+        }
+        updateFanDashboard();
+    }
 }
 
-function getTimestampsMap() {
+function getTimestamps() {
     try {
         return JSON.parse(localStorage.getItem(STORAGE_TIMESTAMPS) || '{}');
     } catch(e) {
@@ -224,26 +192,134 @@ function getTimestampsMap() {
 }
 
 function getExactWatchSeconds() {
-    try {
-        return parseInt(localStorage.getItem(STORAGE_EXACT_WATCH_SECONDS) || '0', 10);
-    } catch(e) {
-        return 0;
+    return parseInt(localStorage.getItem(STORAGE_EXACT_WATCH_SECONDS) || '0', 10);
+}
+
+function initIntersectionObserver() {
+    if (checkObserver) return;
+    checkObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const card = entry.target;
+                const articleId = card.getAttribute('data-id');
+                const article = allArticlesMap[articleId];
+                if (article && article.videoId && !verifiedVideos.has(article.videoId)) {
+                    const cache = getCheckerCache();
+                    if (!cache[article.videoId]) {
+                        bgCheckerQueue.push(article);
+                        processBgCheckerQueue();
+                    }
+                }
+            }
+        });
+    }, { rootMargin: '200px' });
+}
+
+function createCardHTML(article) {
+    allArticlesMap[article.id] = article;
+    if (article.epNumber) {
+        masterEpNumberMap[article.epNumber] = article;
     }
+    const imageUrl = article.image;
+    
+    let readClass = '';
+    const completed = getCompletedWatchedList();
+    if (completed.includes(article.id)) {
+        readClass = 'read-article watched-article';
+    }
+    
+    let unavailableClass = '';
+    const cache = getCheckerCache();
+    if (cache[article.videoId] && cache[article.videoId].isUnavailable) {
+        unavailableClass = 'ep-unavailable';
+    }
+
+    const timestamps = getTimestamps();
+    const savedTimeSec = timestamps[article.id] || 0;
+    const totalEpSecs = parseDurationTextToSec(article.durationText) || 2520; // Default 42 mins
+    const progressPercent = savedTimeSec ? Math.min(100, Math.round((savedTimeSec / totalEpSecs) * 100)) : 0;
+    
+    return `
+        <article class="card ${readClass} ${unavailableClass}" data-id="${article.id}" data-category="${(article.category || 'all').toLowerCase()}">
+            <a href="javascript:void(0)" class="card-img-wrap" onclick="playEpisode('${article.id}')">
+                <img src="${imageUrl}" alt="${article.title}" loading="lazy" class="card-img" onerror="this.src='https://via.placeholder.com/480x270/18181b/818cf8?text=CID+Episode'">
+                <span class="card-duration-badge">${article.durationText || '42:00'}</span>
+                ${progressPercent > 0 ? `<div class="card-progress-container"><div class="card-progress-bar" style="width: ${progressPercent}%;"></div></div>` : ''}
+            </a>
+            <div class="card-content">
+                <div class="card-meta">
+                    <span class="card-source" style="font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">EP ${article.epNumber}</span>
+                    <span>•</span>
+                    <span class="card-date">${article.airDate || ''}</span>
+                </div>
+                <h2 class="card-title">
+                    <a href="javascript:void(0)" onclick="playEpisode('${article.id}')">${article.title}</a>
+                </h2>
+                <div class="card-actions">
+                    <button onclick="playEpisode('${article.id}')" class="chip active" style="width: 100%; justify-content: center; display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        Watch Now
+                    </button>
+                </div>
+            </div>
+        </article>
+    `;
 }
 
-function saveExactWatchSeconds(seconds) {
-    localStorage.setItem(STORAGE_EXACT_WATCH_SECONDS, seconds.toString());
-    updateFanDashboard();
+function parseDurationTextToSec(text) {
+    if (!text) return 0;
+    const parts = text.split(':');
+    if (parts.length === 3) return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+    if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    return 0;
 }
 
-function startActiveWatchTracker(epId) {
+export function renderArticles(articles, containerId, append = false) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (!append) container.innerHTML = '';
+
+    if (articles.length === 0 && !append) {
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem; opacity: 0.6;">No CID episodes found matching your search.</div>';
+        return;
+    }
+
+    initIntersectionObserver();
+
+    const fragment = document.createDocumentFragment();
+    const tempDiv = document.createElement('div');
+
+    articles.forEach(article => {
+        tempDiv.innerHTML = createCardHTML(article);
+        const cardElem = tempDiv.firstElementChild;
+        fragment.appendChild(cardElem);
+        if (checkObserver) checkObserver.observe(cardElem);
+    });
+
+    container.appendChild(fragment);
+}
+
+// ----------------------------------------------------
+// STRICT WATCHED ENGINE (>= 90% COMPLETION & EXACT SECONDS)
+// ----------------------------------------------------
+function startActiveWatchTracker(articleId) {
     stopActiveWatchTracker();
-    currentActiveEpId = epId;
+    currentActiveEpId = articleId;
+
     activeWatchTrackerTimer = setInterval(() => {
-        if (currentActiveEpId) {
-            let total = getExactWatchSeconds();
-            total += 1;
-            saveExactWatchSeconds(total);
+        const totalSecs = getExactWatchSeconds() + 1;
+        localStorage.setItem(STORAGE_EXACT_WATCH_SECONDS, totalSecs.toString());
+
+        const timestamps = getTimestamps();
+        const currentEpSecs = (timestamps[articleId] || 0) + 1;
+        timestamps[articleId] = currentEpSecs;
+        localStorage.setItem(STORAGE_TIMESTAMPS, JSON.stringify(timestamps));
+
+        const article = allArticlesMap[articleId];
+        const totalEpSecs = article ? parseDurationTextToSec(article.durationText) || 2520 : 2520;
+        if (currentEpSecs >= totalEpSecs * 0.90) {
+            saveCompletedEpisode(articleId);
         }
     }, 1000);
 }
@@ -253,155 +329,16 @@ function stopActiveWatchTracker() {
         clearInterval(activeWatchTrackerTimer);
         activeWatchTrackerTimer = null;
     }
-    currentActiveEpId = null;
 }
-
-export function updateWatchProgressUI(articleId) {
-    const completedList = getCompletedWatchedList();
-    const isCompleted = completedList.includes(articleId);
-    
-    const timestamps = getTimestampsMap();
-    const savedTime = timestamps[articleId] || 0;
-
-    const cards = document.querySelectorAll(`[data-article-id="${articleId}"]`);
-    cards.forEach(card => {
-        let badge = card.querySelector('.watched-status-badge');
-        let progressBar = card.querySelector('.card-watch-progress-bar');
-        
-        if (isCompleted) {
-            if (!badge) {
-                const imgWrap = card.querySelector('.card-img-wrap');
-                if (imgWrap) {
-                    badge = document.createElement('span');
-                    badge.className = 'watched-status-badge';
-                    badge.innerHTML = `✓ Watched`;
-                    imgWrap.appendChild(badge);
-                }
-            }
-            if (progressBar) progressBar.style.width = '100%';
-        } else if (savedTime > 0) {
-            if (badge) badge.remove();
-            if (progressBar) {
-                const article = allArticlesMap[articleId];
-                if (article) {
-                    const durSecs = parseDurationToSeconds(article.durationText);
-                    const pct = Math.min(100, Math.max(0, (savedTime / durSecs) * 100));
-                    progressBar.style.width = `${pct}%`;
-                }
-            }
-        }
-    });
-}
-
-function parseDurationToSeconds(durStr) {
-    if (!durStr) return 1300;
-    const parts = durStr.split(':').map(p => parseInt(p, 10));
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    return 1300;
-}
-
-export function renderArticles(articles, containerId, isAppend = false) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    if (!isAppend) {
-        container.innerHTML = '';
-        checkObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const articleId = entry.target.getAttribute('data-article-id');
-                    const article = allArticlesMap[articleId];
-                    if (article && article.videoId) {
-                        const cachedBlocked = isVideoCachedBlocked(article.videoId);
-                        const cachedWorking = isVideoCachedWorking(article.videoId);
-
-                        if (cachedBlocked === true) {
-                            markArticleGeoBlocked(article);
-                        } else if (!cachedWorking && !verifiedVideos.has(article.videoId) && !bgCheckerQueue.some(item => item.videoId === article.videoId)) {
-                            bgCheckerQueue.push(article);
-                            processBgCheckerQueue();
-                        }
-                    }
-                    checkObserver.unobserve(entry.target);
-                }
-            });
-        }, { rootMargin: '200px' });
-    }
-
-    if (!articles || articles.length === 0) {
-        if (!isAppend) {
-            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem; opacity: 0.6;">No CID episodes found matching your filter.</div>';
-        }
-        return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    const completedList = getCompletedWatchedList();
-    const timestampsMap = getTimestampsMap();
-
-    articles.forEach(article => {
-        allArticlesMap[article.id] = article;
-        masterEpNumberMap[article.epNumber] = article;
-
-        const isWatched = completedList.includes(article.id);
-        const savedTime = timestampsMap[article.id] || 0;
-        const durSecs = parseDurationToSeconds(article.durationText);
-        const progressPct = isWatched ? 100 : (savedTime > 0 ? Math.min(100, (savedTime / durSecs) * 100) : 0);
-
-        const card = document.createElement('article');
-        card.className = 'card';
-        card.setAttribute('data-article-id', article.id);
-
-        const imageUrl = article.image;
-
-        card.innerHTML = `
-            <div class="card-img-wrap" onclick="openCleanPlayerById('${article.id}')" style="cursor: pointer;">
-                <img src="${imageUrl}" alt="${article.title}" loading="lazy" class="card-img" onerror="this.src='https://via.placeholder.com/480x270/18181b/818cf8?text=CID+Episode'">
-                <span class="card-duration-badge">${article.durationText}</span>
-                ${isWatched ? `<span class="watched-status-badge">✓ Watched</span>` : ''}
-                <div class="card-watch-progress-bar" style="width: ${progressPct}%;"></div>
-            </div>
-            <div class="card-content">
-                <div class="card-meta">
-                    <span class="card-source">${article.source}</span>
-                    <span class="card-date">• ${article.airDate}</span>
-                </div>
-                <h2 class="card-title">
-                    <a href="javascript:void(0)" onclick="openCleanPlayerById('${article.id}')">${article.title}</a>
-                </h2>
-                <div class="card-footer-action">
-                    <button class="watch-now-btn" onclick="openCleanPlayerById('${article.id}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                        ${isWatched ? 'Re-watch Case' : (savedTime > 0 ? 'Resume Case' : 'Watch Case')}
-                    </button>
-                </div>
-            </div>
-        `;
-
-        fragment.appendChild(card);
-    });
-
-    container.appendChild(fragment);
-
-    if (checkObserver) {
-        const newCards = container.querySelectorAll('.card');
-        newCards.forEach(card => checkObserver.observe(card));
-    }
-}
-
-window.openCleanPlayerById = function(articleId) {
-    const article = allArticlesMap[articleId];
-    if (article) openCleanPlayer(article);
-};
 
 export function openCleanPlayer(article) {
     currentModalEpNum = article.epNumber;
-    let backdrop = document.getElementById('cid-clean-backdrop');
-    
+
+    let backdrop = document.getElementById('tmkoc-clean-backdrop');
     if (!backdrop) {
+        const autoplayState = localStorage.getItem('autoplayNext') !== 'false' ? 'checked' : '';
         backdrop = document.createElement('div');
-        backdrop.id = 'cid-clean-backdrop';
+        backdrop.id = 'tmkoc-clean-backdrop';
         backdrop.className = 'tmkoc-modal-backdrop';
         backdrop.innerHTML = `
             <div class="tmkoc-modal-dialog">
@@ -414,102 +351,124 @@ export function openCleanPlayer(article) {
                 </div>
                 <div id="clean-modal-warning" class="tmkoc-geo-warning"></div>
                 <div class="tmkoc-video-viewport">
-                    <div id="clean-player-target"></div>
+                    <div id="clean-iframe-container"></div>
                 </div>
                 <div class="tmkoc-modal-footer" style="justify-content: space-between; align-items: center; display: flex;">
                     <button class="tmkoc-nav-btn" onclick="navCleanEp(-1)">◀ Previous Ep</button>
-                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
-                        <input type="checkbox" id="autoplay-next-chk" onchange="toggleAutoplay(this.checked)"> Autoplay Next
-                    </label>
+                    <div style="display: flex; align-items: center;">
+                        <label style="color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none;">
+                            <input type="checkbox" id="autoplay-toggle" ${autoplayState} onchange="toggleAutoplay(this.checked)" style="accent-color: var(--text-primary); width: 16px; height: 16px; cursor: pointer;">
+                            Autoplay Next
+                        </label>
+                    </div>
                     <button class="tmkoc-nav-btn" onclick="navCleanEp(1)">Next Ep ▶</button>
                 </div>
             </div>
         `;
         document.body.appendChild(backdrop);
-
-        backdrop.addEventListener('click', (e) => {
-            if (e.target === backdrop) closeCleanPlayer();
-        });
     }
 
-    const badge = document.getElementById('clean-badge');
-    const title = document.getElementById('clean-title');
-    const warning = document.getElementById('clean-modal-warning');
-    const chk = document.getElementById('autoplay-next-chk');
+    const modalWarning = document.getElementById('clean-modal-warning');
+    if (modalWarning) {
+        modalWarning.style.display = 'none';
+    }
 
-    if (badge) badge.textContent = `EP ${article.epNumber}`;
-    if (title) title.textContent = article.title;
-    if (chk) chk.checked = (localStorage.getItem('autoplayNext') !== 'false');
+    document.getElementById('clean-title').textContent = article.title;
+    document.getElementById('clean-badge').textContent = `EP ${article.epNumber}`;
 
-    if (warning) {
-        if (isVideoCachedBlocked(article.videoId)) {
-            warning.style.display = 'block';
-            warning.innerHTML = `⚠️ This CID episode is restricted in your region. Connect to an Indian VPN to unlock playback!`;
+    const timestamps = getTimestamps();
+    const resumeSeconds = timestamps[article.id] || 0;
+
+    const viewport = document.querySelector('.tmkoc-video-viewport');
+    
+    if (window.YT && window.YT.Player) {
+        if (ytPlayer) {
+            ytPlayer.destroy();
+        }
+        viewport.innerHTML = '<div id="clean-iframe-container"></div>';
+        
+        const videoIdToPlay = article.videoId || '';
+        if (videoIdToPlay) {
+            ytPlayer = new window.YT.Player('clean-iframe-container', {
+                videoId: videoIdToPlay,
+                playerVars: { 
+                    'autoplay': 1, 
+                    'rel': 0, 
+                    'controls': 1,
+                    'start': resumeSeconds,
+                    'modestbranding': 1,
+                    'iv_load_policy': 3,
+                    'color': 'white',
+                    'playsinline': 1
+                },
+                events: {
+                    'onError': function(event) {
+                        if (modalWarning) {
+                            modalWarning.style.display = 'block';
+                            modalWarning.innerHTML = `⚠️ <strong>Video Unavailable:</strong> YouTube refused to play this video. It may be geo-blocked, made private, or Sony disabled embedding. <a href="https://www.youtube.com/results?search_query=CID+Episode+${article.epNumber}" target="_blank" style="color: #d97706; text-decoration: underline;">Search for Ep ${article.epNumber} on YouTube</a>. (Code: ${event.data})`;
+                        }
+                        try {
+                            verifiedVideos.add(article.id);
+                            const card = document.querySelector(`.card[data-id="${article.id}"]`);
+                            if (card && !card.classList.contains('ep-unavailable')) {
+                                card.classList.add('ep-unavailable');
+                            }
+                        } catch(e) {}
+                    },
+                    'onStateChange': function(event) {
+                        if (event.data === window.YT.PlayerState.PLAYING) {
+                            currentActiveEpId = article.id;
+                            try {
+                                verifiedVideos.add(article.id);
+                                const card = document.querySelector(`.card[data-id="${article.id}"]`);
+                                if (card) card.classList.remove('ep-unavailable');
+                            } catch(e) {}
+                        } else if (event.data === window.YT.PlayerState.ENDED) {
+                            if (localStorage.getItem('autoplayNext') !== 'false') {
+                                window.navCleanEp(1);
+                            }
+                        }
+                    }
+                }
+            });
         } else {
-            warning.style.display = 'none';
+            viewport.innerHTML = `<iframe id="clean-iframe" src="https://www.youtube.com/embed?listType=search&list=CID+Episode+${article.epNumber}&modestbranding=1&rel=0&iv_load_policy=3&color=white&playsinline=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        }
+    } else {
+        const startParam = resumeSeconds > 5 ? `&start=${resumeSeconds}` : '';
+        if (article.videoId) {
+            viewport.innerHTML = `<iframe id="clean-iframe" src="https://www.youtube.com/embed/${article.videoId}?autoplay=1&rel=0&controls=1&modestbranding=1&iv_load_policy=3&color=white&playsinline=1${startParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        } else {
+            viewport.innerHTML = `<iframe id="clean-iframe" src="https://www.youtube.com/embed?listType=search&list=CID+Episode+${article.epNumber}&modestbranding=1&rel=0&iv_load_policy=3&color=white&playsinline=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         }
     }
-
-    const timestamps = getTimestampsMap();
-    const startSeconds = timestamps[article.id] || 0;
 
     backdrop.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
-    if (ytPlayer) {
-        try { ytPlayer.destroy(); } catch(e) {}
-        ytPlayer = null;
-    }
-
-    const targetDiv = document.getElementById('clean-player-target');
-    if (targetDiv) {
-        targetDiv.innerHTML = '<div id="yt-embed-instance"></div>';
-    }
-
-    ytPlayer = new window.YT.Player('yt-embed-instance', {
-        height: '100%',
-        width: '100%',
-        videoId: article.videoId,
-        playerVars: {
-            'autoplay': 1,
-            'start': Math.floor(startSeconds),
-            'rel': 0,
-            'modestbranding': 1,
-            'playsinline': 1
-        },
-        events: {
-            'onStateChange': (event) => {
-                if (event.data === window.YT.PlayerState.PLAYING) {
-                    startActiveWatchTracker(article.id);
-                } else if (event.data === window.YT.PlayerState.PAUSED || event.data === window.YT.PlayerState.ENDED) {
-                    stopActiveWatchTracker();
-                }
-
-                if (event.data === window.YT.PlayerState.ENDED) {
-                    const completedList = getCompletedWatchedList();
-                    if (!completedList.includes(article.id)) {
-                        completedList.push(article.id);
-                        saveCompletedWatchedList(completedList);
-                        updateWatchProgressUI(article.id);
-                    }
-                    if (chk && chk.checked) {
-                        navCleanEp(1);
-                    }
-                }
-            }
-        }
-    });
-
     startActiveWatchTracker(article.id);
 }
 
+window.playEpisode = function(articleId) {
+    const article = allArticlesMap[articleId];
+    if (article) {
+        openCleanPlayer(article);
+    }
+};
+
+window.openCleanPlayerById = function(articleId) {
+    window.playEpisode(articleId);
+};
+
 window.closeCleanPlayer = function() {
-    const backdrop = document.getElementById('cid-clean-backdrop');
+    const backdrop = document.getElementById('tmkoc-clean-backdrop');
     if (backdrop) backdrop.style.display = 'none';
     if (ytPlayer) {
         try { ytPlayer.destroy(); } catch(e) {}
         ytPlayer = null;
     }
+    const iframe = document.getElementById('clean-iframe');
+    if (iframe) iframe.src = '';
     document.body.style.overflow = 'auto';
     stopActiveWatchTracker();
 };
@@ -527,10 +486,13 @@ window.navCleanEp = function(dir) {
     }
 };
 
+// ----------------------------------------------------
+// REAL CID DASHBOARD & LEADERBOARD ENGINE
+// ----------------------------------------------------
 function getFanLevel(watchedCount) {
-    if (watchedCount >= 1000) return { title: 'ACP Pradyuman Rank', color: 'var(--text-primary)' };
-    if (watchedCount >= 301) return { title: 'Senior Inspector (Daya/Abhijeet)', color: 'var(--text-primary)' };
-    if (watchedCount >= 51) return { title: 'Sub-Inspector Freddy', color: 'var(--text-primary)' };
+    if (watchedCount >= 1000) return { title: 'ACP Pradyuman Legend', color: 'var(--text-primary)' };
+    if (watchedCount >= 301) return { title: 'Senior Inspector', color: 'var(--text-primary)' };
+    if (watchedCount >= 51) return { title: 'Forensic Specialist', color: 'var(--text-primary)' };
     return { title: 'Junior Investigator', color: 'var(--text-primary)' };
 }
 
@@ -603,7 +565,7 @@ function renderLeaderboardList(userHandle, userCount, userHours, userLevel) {
         html += `
             <div style="padding: 30px 20px; text-align: center; background: var(--bg-primary); border-radius: 12px; border: 1px dashed var(--border-color); font-size: 13px; color: var(--text-primary); opacity: 0.7;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><br>
-                No watched CID episodes logged yet.<br>Start watching cases to claim your spot on the Global Leaderboard!
+                No cases solved yet.<br>Start watching episodes to claim your spot on the Global CID Leaderboard!
             </div>
         `;
     } else {
@@ -633,11 +595,6 @@ function renderLeaderboardList(userHandle, userCount, userHours, userLevel) {
     leaderboardEl.innerHTML = html;
 }
 
-window.closeFanModal = function() {
-    const backdrop = document.getElementById('fan-modal-backdrop');
-    if (backdrop) backdrop.style.display = 'none';
-};
-
 window.toggleFullScreen = function() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
@@ -664,7 +621,7 @@ window.copyShareCardText = function() {
     const hours = Math.floor(totalSecs / 3600);
     const level = getFanLevel(count);
 
-    const shareText = `I've watched ${count} CID episodes (${hours} Hours) on Daily Dose! My Agent Rank: ${level.title} (${handle}). Check your rank at CodeMasterAbhishek.github.io/Daily-Dose-of-CID/`;
+    const shareText = `I've watched ${count} CID cases (${hours} Hours) on Daily Dose of CID! My Rank: ${level.title} (${handle}). Check your level at CodeMasterAbhishek.github.io/Daily-Dose-of-CID/`;
 
     navigator.clipboard.writeText(shareText).then(() => {
         alert('Copied Social Share Card text to clipboard!');
@@ -688,7 +645,7 @@ export function renderStorylinesGrid(storylines, containerId) {
     container.innerHTML = '';
 
     if (!storylines || storylines.length === 0) {
-        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem; opacity: 0.6;">No CID storylines found.</div>';
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem; opacity: 0.6;">No storylines found.</div>';
         return;
     }
 

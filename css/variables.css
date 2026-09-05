@@ -31,7 +31,7 @@
   --radius-xl: 24px;
   --radius-pill: 9999px;
   
-  /* Shadows */
+  /* Shadows - Premium Soft UI Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 20px 40px -4px rgba(0, 0, 0, 0.08);
@@ -45,17 +45,18 @@
 }
 
 [data-theme="dark"] {
-  /* Colors - Dark Theme (Crime Thriller OLED Navy) */
-  --bg-primary: #070a13;
-  --bg-secondary: #0f172a;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --accent: #ffffff;
-  --accent-hover: #cbd5e1;
+  /* Colors - Dark Theme (OLED Black, Glowing Accents) */
+  --bg-primary: #000000;
+  --bg-secondary: #0A0A0A;
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --accent: #FFFFFF;
+  --accent-hover: #D4D4D8;
   --border-color: rgba(255, 255, 255, 0.1);
-  --glass-bg: rgba(15, 23, 42, 0.85);
+  --glass-bg: rgba(0, 0, 0, 0.85);
   --glass-border: rgba(255, 255, 255, 0.08);
   
+  /* Deep shadows for dark mode */
   --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 20px 40px -4px rgba(0, 0, 0, 0.8);
 }
