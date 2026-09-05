@@ -314,24 +314,25 @@ a:hover, a:visited, a:focus, a:active {
 .tmkoc-modal-backdrop, .cid-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 10000;
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
 }
 
 .tmkoc-modal-dialog, .cid-modal-dialog {
-  width: 100%;
-  max-width: 960px;
+  width: 94vw;
+  max-width: 1280px;
+  max-height: 94vh;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
   transition: background-color 0.3s ease;
@@ -396,7 +397,9 @@ a:hover, a:visited, a:focus, a:active {
 .tmkoc-video-viewport, .cid-video-viewport {
   width: 100%;
   aspect-ratio: 16/9;
+  max-height: calc(94vh - 100px);
   background: #000000;
+  position: relative;
 }
 
 .tmkoc-video-viewport iframe, .cid-video-viewport iframe {
