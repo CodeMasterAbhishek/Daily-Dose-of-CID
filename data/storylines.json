@@ -1,0 +1,98 @@
+[
+  {
+    "id": "arc_1_the_poison_case",
+    "sortOrder": 1,
+    "title": "The Poison Case",
+    "tagline": "Classic Episode 1 Pilot Arc (Ep 1 - 2)",
+    "description": "ACP Pradyuman and Team CID investigate a dangerous cyanide poisoning case that launched the iconic series.",
+    "startEp": 1,
+    "endEp": 2,
+    "totalEpisodes": 2,
+    "category": "Classic",
+    "coverEp": 1
+  },
+  {
+    "id": "arc_5_family_plight",
+    "sortOrder": 2,
+    "title": "Family Plight",
+    "tagline": "Early Mystery (Ep 5 - 6)",
+    "description": "A dark conspiracy threatens a family as Team CID races against time to expose the culprit.",
+    "startEp": 5,
+    "endEp": 6,
+    "totalEpisodes": 2,
+    "category": "Classic",
+    "coverEp": 5
+  },
+  {
+    "id": "arc_15_the_stalker",
+    "sortOrder": 3,
+    "title": "The Stalker",
+    "tagline": "Psychological Thriller (Ep 15 - 16)",
+    "description": "Team CID tracks down a sinister stalker terrorizing victims in the city.",
+    "startEp": 15,
+    "endEp": 16,
+    "totalEpisodes": 2,
+    "category": "Classic",
+    "coverEp": 15
+  },
+  {
+    "id": "arc_50_missing_bullet",
+    "sortOrder": 4,
+    "title": "The Case of the Missing Bullet",
+    "tagline": "Special Episode 50 Arc (Ep 50 - 51)",
+    "description": "Daya and Abhijeet investigate a mystery where a bullet is missing from a crime scene with no body.",
+    "startEp": 50,
+    "endEp": 51,
+    "totalEpisodes": 2,
+    "category": "Milestone",
+    "coverEp": 50
+  },
+  {
+    "id": "arc_100_vanishing_lady",
+    "sortOrder": 5,
+    "title": "The Vanishing Lady",
+    "tagline": "Ep 100 Milestone (Ep 99 - 100)",
+    "description": "A woman vanishes in thin air inside a locked building, leaving Team CID with impossible clues.",
+    "startEp": 99,
+    "endEp": 100,
+    "totalEpisodes": 2,
+    "category": "Milestone",
+    "coverEp": 100
+  },
+  {
+    "id": "arc_500_poisonous_dart",
+    "sortOrder": 6,
+    "title": "The Poisonous Dart",
+    "tagline": "Ep 500 Celebration (Ep 500 - 501)",
+    "description": "Celebrating 500 episodes with an undercover investigation into an assassin using deadly darts.",
+    "startEp": 500,
+    "endEp": 501,
+    "totalEpisodes": 2,
+    "category": "Milestone",
+    "coverEp": 500
+  },
+  {
+    "id": "arc_1000_mouse_trap",
+    "sortOrder": 7,
+    "title": "Mouse Trap",
+    "tagline": "1000th Episode Spectacular (Ep 1000 - 1001)",
+    "description": "Milestone Episode 1000: ACP Pradyuman, Daya, and Abhijeet face a criminal mastermind's elaborate trap.",
+    "startEp": 1000,
+    "endEp": 1001,
+    "totalEpisodes": 2,
+    "category": "Milestone",
+    "coverEp": 1000
+  },
+  {
+    "id": "arc_1400_kaanch_ke_paar",
+    "sortOrder": 8,
+    "title": "Kaanch Ke Paar",
+    "tagline": "Ep 1400 Special (Ep 1400 - 1401)",
+    "description": "A high-stakes murder mystery behind glass mirrors that baffles forensic experts.",
+    "startEp": 1400,
+    "endEp": 1401,
+    "totalEpisodes": 2,
+    "category": "Milestone",
+    "coverEp": 1400
+  }
+]
