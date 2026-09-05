@@ -109,12 +109,6 @@ function handleCheckerResult(article, isUnavailable) {
     try {
         verifiedVideos.add(article.id);
         saveVideoVerification(article.videoId, isUnavailable);
-        
-        const card = document.querySelector(`.card[data-id="${article.id}"]`);
-        if (card) {
-            if (isUnavailable) card.classList.add('ep-unavailable');
-            else card.classList.remove('ep-unavailable');
-        }
     } catch(e) {}
     
     bgCheckerQueue.shift();
@@ -219,9 +213,6 @@ function initIntersectionObserver() {
                         const cache = getCheckerCache();
                         if (cache[article.videoId]) {
                             verifiedVideos.add(article.id);
-                            if (cache[article.videoId].isUnavailable) {
-                                card.classList.add('ep-unavailable');
-                            }
                         } else {
                             if (!bgCheckerQueue.some(a => a.id === article.id)) {
                                 bgCheckerQueue.push(article);
@@ -248,12 +239,6 @@ function createCardHTML(article) {
     if (completed.includes(article.id)) {
         readClass = 'read-article watched-article';
     }
-    
-    let unavailableClass = '';
-    const cache = getCheckerCache();
-    if (cache[article.videoId] && cache[article.videoId].isUnavailable) {
-        unavailableClass = 'ep-unavailable';
-    }
 
     const timestamps = getTimestamps();
     const savedTimeSec = timestamps[article.id] || 0;
@@ -261,7 +246,7 @@ function createCardHTML(article) {
     const progressPercent = savedTimeSec ? Math.min(100, Math.round((savedTimeSec / totalEpSecs) * 100)) : 0;
     
     return `
-        <article class="card ${readClass} ${unavailableClass}" data-id="${article.id}" data-category="${(article.category || 'all').toLowerCase()}">
+        <article class="card ${readClass}" data-id="${article.id}" data-category="${(article.category || 'all').toLowerCase()}">`
             <a href="javascript:void(0)" class="card-img-wrap" onclick="playEpisode('${article.id}')">
                 <img src="${imageUrl}" alt="${article.title}" loading="lazy" class="card-img" onerror="this.src='https://via.placeholder.com/480x270/18181b/818cf8?text=CID+Episode'">
                 <span class="card-duration-badge">${article.durationText || '42:00'}</span>
@@ -424,17 +409,29 @@ export function openCleanPlayer(article) {
                 },
                 events: {
                     'onError': function(event) {
-                        if (modalWarning) {
-                            modalWarning.style.display = 'block';
-                            modalWarning.innerHTML = `⚠️ <strong>Video Unavailable:</strong> YouTube refused to play this video. It may be geo-blocked, made private, or Sony disabled embedding. <a href="https://www.youtube.com/results?search_query=CID+Episode+${article.epNumber}" target="_blank" style="color: #d97706; text-decoration: underline;">Search for Ep ${article.epNumber} on YouTube</a>. (Code: ${event.data})`;
-                        }
-                        try {
-                            verifiedVideos.add(article.id);
-                            const card = document.querySelector(`.card[data-id="${article.id}"]`);
-                            if (card && !card.classList.contains('ep-unavailable')) {
-                                card.classList.add('ep-unavailable');
-                            }
-                        } catch(e) {}
+                        const ytWatchUrl = article.videoId ? `https://www.youtube.com/watch?v=${article.videoId}` : `https://www.youtube.com/results?search_query=CID+Episode+${article.epNumber}`;
+                        const ytSearchUrl = `https://www.youtube.com/results?search_query=CID+Episode+${article.epNumber}`;
+                        
+                        viewport.innerHTML = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 32px 20px; text-align: center; background: radial-gradient(circle at center, #1e1b4b 0%, #090d16 100%); color: #ffffff;">
+                                <div style="background: rgba(239, 68, 68, 0.15); color: #ef4444; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid rgba(239, 68, 68, 0.3);">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.016 3.016 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                </div>
+                                <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 8px; color: #ffffff;">Watch Full Episode on YouTube</h3>
+                                <p style="font-size: 13px; color: #94a3b8; max-width: 500px; margin-bottom: 24px; line-height: 1.5;">
+                                    Sony SET India has enabled direct playback for <strong>"Ep ${article.epNumber}: ${article.title}"</strong> on official YouTube.
+                                </p>
+                                <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                                    <a href="${ytWatchUrl}" target="_blank" style="padding: 12px 28px; font-size: 14px; font-weight: 800; background: #ef4444; color: #ffffff; border: none; border-radius: 9999px; text-decoration: none; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(239,68,68,0.4);">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                        Play Ep ${article.epNumber} on YouTube
+                                    </a>
+                                    <a href="${ytSearchUrl}" target="_blank" style="padding: 12px 20px; font-size: 14px; font-weight: 700; color: #f8fafc; border: 1px solid rgba(255,255,255,0.2); border-radius: 9999px; text-decoration: none; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05);">
+                                        Search on YouTube
+                                    </a>
+                                </div>
+                            </div>
+                        `;
                     },
                     'onStateChange': function(event) {
                         if (event.data === window.YT.PlayerState.PLAYING) {
